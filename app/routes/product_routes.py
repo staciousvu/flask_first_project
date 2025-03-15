@@ -2,34 +2,29 @@
 from app.services import ProductService
 from flask import Blueprint, jsonify, render_template, request, redirect, url_for
 from app.models import Product
-
+from app.utils.response_api import ApiResponse
 from app.extensions import db
-
-
+from app.schemas.product_schemas import product_schema,products_schema
+from app.exceptions.app_exception import AppException
+from app.exceptions.error_code import ErrorCode
 product_bp = Blueprint('product', __name__)
+
+@product_bp.route("/products/init")
+def init_datas():
+    ProductService.initData();
+    return jsonify({"message": "Product data initialized successfully."})
+
 @product_bp.route("/products", methods=["GET"])
 def get_all_products():
     products = ProductService.getAll()
-    return jsonify([{
-        'id': product.id,
-        'name': product.name,
-        'price': product.price,
-        'description': product.description,
-        'category_id': product.category_id
-    } for product in products]), 200
+    return ApiResponse.success_response("Get all Products",products_schema.dump(products)), 200
 
 @product_bp.route("/product/<int:id>", methods=["GET"])
 def get_product_by_id(id):
     product = ProductService.getById(id)
     if not product:
-        return jsonify({"message": "Product not found"}), 404
-    return jsonify({
-        'id': product.id,
-        'name': product.name,
-        'price': product.price,
-        'description': product.description,
-        'category_id': product.category_id
-    }), 200
+        raise AppException(ErrorCode.PRODUCT_NOT_FOUND)
+    return ApiResponse.success_response(f"Get product with id {id}",product_schema.dump(product)), 200
 
 @product_bp.route("/products", methods=["POST"])
 def create_product():
